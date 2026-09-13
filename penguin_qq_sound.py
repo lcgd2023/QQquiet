@@ -19,8 +19,7 @@ APP_ICON = os.path.join(BUNDLE_DIR, 'QQ.ico')
 
 FIRST_RUN_FLAG = os.path.join(APP_DIR, '.qeb_first_run')
 QQ_PATH_CACHE = os.path.join(APP_DIR, '.qeb_qq_path')
-
-QQ_PATH_CACHE = os.path.join(APP_DIR, '.qeb_qq_path')
+SIGNAL_FILE = os.path.join(APP_DIR, '.qeb_show_signal')
 
 tray_icon = None
 gui_running = False
@@ -310,15 +309,36 @@ def start_tray():
     def on_exit(icon, item):
         icon.stop()
 
+    def check_signal():
+        while True:
+            try:
+                if os.path.exists(SIGNAL_FILE):
+                    os.remove(SIGNAL_FILE)
+                    if not gui_running:
+                        threading.Thread(target=show_main_gui, daemon=True).start()
+            except Exception:
+                pass
+            time.sleep(0.5)
+
     tray_icon = pystray.Icon("企鹅别叫", get_icon(), "企鹅别叫--by lcgd2023", menu=pystray.Menu(
         pystray.MenuItem("打开设置", on_show, default=True),
         pystray.MenuItem("退出", on_exit)
     ))
 
+    threading.Thread(target=check_signal, daemon=True).start()
     tray_icon.run()
 
 
 if __name__ == "__main__":
+    import time
+    mutex = ctypes.windll.kernel32.CreateMutexW(None, False, "企鹅别叫lcgd2023")
+    if ctypes.windll.kernel32.GetLastError() == 183:
+        try:
+            open(SIGNAL_FILE, 'w').close()
+        except Exception:
+            pass
+        sys.exit()
+
     is_first_run = not os.path.exists(FIRST_RUN_FLAG)
 
     if is_first_run:
