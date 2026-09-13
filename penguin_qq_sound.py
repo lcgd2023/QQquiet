@@ -119,6 +119,27 @@ def get_wav_path(target_dir):
     return None
 
 
+def file_hash(filepath):
+    import hashlib
+    h = hashlib.md5()
+    with open(filepath, 'rb') as f:
+        for chunk in iter(lambda: f.read(8192), b''):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def detect_current_sound():
+    qq_msg = find_qq_msg_wav()
+    if not qq_msg:
+        return None
+    qq_hash = file_hash(qq_msg)
+    for name, label in [('0', '安静'), ('fj', '飞机音'), ('zj', '战斗机音'), ('yb', '原本音频')]:
+        wav = get_wav_path(name)
+        if wav and file_hash(wav) == qq_hash:
+            return label
+    return '自定义'
+
+
 def replace_sound(target_dir, show_msg=True):
     msg_path = find_qq_msg_wav()
     if not msg_path:
@@ -233,6 +254,9 @@ def show_main_gui():
     qq_msg = find_qq_msg_wav()
     if qq_msg:
         tk.Label(root, text=f"已找到: {qq_msg}", font=("Microsoft YaHei", 9), fg="green", wraplength=420, justify="left").pack()
+        current = detect_current_sound()
+        if current:
+            tk.Label(root, text=f"当前提示音: {current}", font=("Microsoft YaHei", 9, "bold"), fg="#333").pack()
     else:
         tk.Label(root, text="未找到QQ，请先打开QQ", font=("Microsoft YaHei", 9), fg="red").pack()
 
