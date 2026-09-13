@@ -23,6 +23,7 @@ SIGNAL_FILE = os.path.join(APP_DIR, '.qeb_show_signal')
 
 tray_icon = None
 gui_running = False
+current_sound_label = None
 
 
 def find_qq_msg_wav():
@@ -128,6 +129,15 @@ def file_hash(filepath):
     return h.hexdigest()
 
 
+def refresh_current_sound():
+    global current_sound_label
+    if current_sound_label is None:
+        return
+    current = detect_current_sound()
+    if current:
+        current_sound_label.config(text=f"当前提示音: {current}")
+
+
 def detect_current_sound():
     qq_msg = find_qq_msg_wav()
     if not qq_msg:
@@ -160,6 +170,7 @@ def replace_sound(target_dir, show_msg=True):
         os.chmod(msg_path, attrs)
         if show_msg:
             messagebox.showinfo("Success", "Success")
+        refresh_current_sound()
         return True
     except Exception as e:
         if show_msg:
@@ -199,38 +210,68 @@ def get_icon():
 
 
 def show_initial_popup():
+    import math
     root = tk.Tk()
     root.withdraw()
     if os.path.isfile(APP_ICON):
         root.iconbitmap(APP_ICON)
 
-    popup = tk.Toplevel(root)
-    popup.title("企鹅别叫--by lcgd2023")
-    popup.geometry("300x150")
-    popup.resizable(False, False)
-    if os.path.isfile(APP_ICON):
-        popup.iconbitmap(APP_ICON)
+    splash = tk.Toplevel(root)
+    splash.overrideredirect(True)
+    splash.attributes('-topmost', True)
 
-    popup.update_idletasks()
-    x = (popup.winfo_screenwidth() - 300) // 2
-    y = (popup.winfo_screenheight() - 150) // 2
-    popup.geometry(f'300x150+{x}+{y}')
+    size = 300
+    x = (splash.winfo_screenwidth() - size) // 2
+    y = (splash.winfo_screenheight() - size) // 2
+    splash.geometry(f'{size}x{size}+{x}+{y}')
 
-    tk.Label(popup, text="欢迎使用 企鹅别叫--by lcgd2023", font=("Microsoft YaHei", 12)).pack(pady=20)
+    canvas = tk.Canvas(splash, width=size, height=size, bg='white', highlightthickness=0)
+    canvas.pack()
 
-    btn_frame = tk.Frame(popup)
-    btn_frame.pack()
+    chars = "QQ别叫"
+    cx, cy = size // 2, size // 2 - 15
+    radius = 70
+    font = ("Microsoft YaHei", 22, "bold")
 
-    def enter():
-        popup.destroy()
-        root.destroy()
-        show_main_gui()
+    for i, ch in enumerate(chars):
+        angle = math.radians(225 + i * (360 / len(chars)))
+        tx = cx + radius * math.cos(angle)
+        ty = cy + radius * math.sin(angle)
+        canvas.create_text(tx, ty, text=ch, font=font, fill='#333')
 
-    tk.Button(btn_frame, text="继续", width=10, command=enter,
-              bg="#4CAF50", fg="white", font=("Microsoft YaHei", 10)).pack(side=tk.LEFT, padx=10)
-    tk.Button(btn_frame, text="开始", width=10, command=enter,
-              bg="#F44336", fg="white", font=("Microsoft YaHei", 10)).pack(side=tk.RIGHT, padx=10)
+    canvas.create_text(cx + 55, cy + 65, text="Q", font=("Microsoft YaHei", 40, "bold"), fill='#333')
 
+    def show_buttons():
+        splash.destroy()
+
+        popup = tk.Toplevel(root)
+        popup.title("企鹅别叫--by lcgd2023")
+        popup.geometry("300x150")
+        popup.resizable(False, False)
+        if os.path.isfile(APP_ICON):
+            popup.iconbitmap(APP_ICON)
+
+        popup.update_idletasks()
+        px = (popup.winfo_screenwidth() - 300) // 2
+        py = (popup.winfo_screenheight() - 150) // 2
+        popup.geometry(f'300x150+{px}+{py}')
+
+        tk.Label(popup, text="欢迎使用 企鹅别叫--by lcgd2023", font=("Microsoft YaHei", 12)).pack(pady=20)
+
+        btn_frame = tk.Frame(popup)
+        btn_frame.pack()
+
+        def enter():
+            popup.destroy()
+            root.destroy()
+            show_main_gui()
+
+        tk.Button(btn_frame, text="继续", width=10, command=enter,
+                  bg="#4CAF50", fg="white", font=("Microsoft YaHei", 10)).pack(side=tk.LEFT, padx=10)
+        tk.Button(btn_frame, text="开始", width=10, command=enter,
+                  bg="#F44336", fg="white", font=("Microsoft YaHei", 10)).pack(side=tk.RIGHT, padx=10)
+
+    splash.after(800, show_buttons)
     root.mainloop()
 
 
@@ -255,8 +296,8 @@ def show_main_gui():
     if qq_msg:
         tk.Label(root, text=f"已找到: {qq_msg}", font=("Microsoft YaHei", 9), fg="green", wraplength=420, justify="left").pack()
         current = detect_current_sound()
-        if current:
-            tk.Label(root, text=f"当前提示音: {current}", font=("Microsoft YaHei", 9, "bold"), fg="#333").pack()
+        current_sound_label = tk.Label(root, text=f"当前提示音: {current if current else '未知'}", font=("Microsoft YaHei", 9, "bold"), fg="#333")
+        current_sound_label.pack()
     else:
         tk.Label(root, text="未找到QQ，请先打开QQ", font=("Microsoft YaHei", 9), fg="red").pack()
 
